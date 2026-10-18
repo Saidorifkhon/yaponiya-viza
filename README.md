@@ -106,7 +106,7 @@ maydon qolsa skript to'xtab ovoz beradi.
 - START_TIME + STOP_AFTER_MINUTES o'tsa (bloklanmaslik uchun).
 
 Sayt xato bersa (500 "エラーが発生しました", texnik ishlar, timeout) bot TO'XTAMAYDI:
-login va kalendarni har RETRY_SECONDS (10) da qayta urinadi, 19:10 gacha.
+login va kalendarni har RETRY_SECONDS (standart 10, kamida 1) da qayta urinadi, 19:10 gacha.
 Logda "SAYT JAVOB BERMAYAPTI" deb yoziladi. 2026-10-18 17:30 da sayt shunday xato bergan.
 
 Slot bosilganda "band bo'lib qoldi" xatosi chiqsa, kuzatuv davom etadi.

@@ -122,7 +122,7 @@ def cfg() -> dict:
         # sessiyani tirik saqlash uchun yetarli, saytga yuk kam.
         "pre_poll_seconds": max(poll, float(os.getenv("PRE_POLL_SECONDS", "20"))),
         # Sayt xato berganda (500, texnik ishlar) qayta urinish oralig'i, soniya.
-        "retry_seconds": max(3.0, float(os.getenv("RETRY_SECONDS", "10"))),
+        "retry_seconds": max(1.0, float(os.getenv("RETRY_SECONDS", "10"))),
         # Ariza turi (kalendar formasidagi yashirin category/event/plan).
         # Standart: 12/20/19 = "VISA Application for short stay (Applicant)".
         "category_id": os.getenv("CATEGORY_ID", "12"),
