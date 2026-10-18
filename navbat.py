@@ -755,7 +755,14 @@ def main() -> None:
         log = logging.getLogger(f"navbat[{c['login_id']}]")
     for k, raw in c["form_raw"].items():
         parts = [x.strip() for x in raw.split(",")]
-        c["form_values"][k] = parts[idx] if len(parts) > 1 and idx < len(parts) else (raw if len(parts) == 1 else "")
+        # Bitta qiymat faqat 1-akkauntniki: boshqa odam arizasiga birovning ismi/pasporti
+        # yozilib ketmasin (sayt mos kelmasa bronni bekor qiladi). Yo'q bo'lsa - formada to'xtaydi.
+        if len(parts) > 1:
+            c["form_values"][k] = parts[idx] if idx < len(parts) else ""
+        else:
+            c["form_values"][k] = raw if (idx == 0 or len(c["accounts"]) == 1) else ""
+        if len(c["accounts"]) > 1 and raw and not c["form_values"][k]:
+            log.warning("%s: %s akkaunt uchun qiymat yo'q - formada to'xtab, qo'lda to'ldirasiz", k, c["login_id"])
     ff = c["form_fields"]
     c["form_fields_mine"] = ff[idx] if idx < len(ff) else {}
 
