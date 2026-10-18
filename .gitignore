@@ -1,0 +1,10 @@
+.env
+navbat.log
+shots/
+calendar-dump.html
+venv/
+__pycache__/
+booked.flag
+runs/
+tests/__pycache__/
+*.pyc

@@ -1,0 +1,29 @@
+# Yaponiya viza navbat: dashboard (8106) + brauzerni ko'rish noVNC (8107).
+# Ikkala port faqat 127.0.0.1 da (tashqaridan kirib bo'lmaydi).
+# Ishga tushirish:  docker compose up -d --build
+# Brauzer:          http://127.0.0.1:8107/vnc.html  (Connect)
+services:
+  viza:
+    build: .
+    container_name: yaponiya-viza
+    restart: unless-stopped
+    init: true
+    ports:
+      - "127.0.0.1:8106:8106"
+      - "127.0.0.1:8107:8107"
+    # Kod, .env, log va screenshotlar host papkada qoladi (dashboard .env ni shu yerga yozadi).
+    volumes:
+      - .:/app
+    environment:
+      TZ: Asia/Tashkent
+      DASHBOARD_PORT: "8106"
+    shm_size: 1gb        # Chromium /dev/shm siz qulab tushadi
+    mem_limit: 2g
+    pids_limit: 512
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"
