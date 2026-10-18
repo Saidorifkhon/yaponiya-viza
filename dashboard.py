@@ -90,8 +90,11 @@ def start(mode: str) -> str:
             args.append("--now")
         elif mode == "discover":
             args.append("--discover")
-        flags = subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0
-        _proc = subprocess.Popen(args, cwd=str(HERE), creationflags=flags)
+        # O'z jarayon guruhi: stop() akkaunt jarayonlarini ham birga o'chiradi.
+        if os.name == "nt":
+            _proc = subprocess.Popen(args, cwd=str(HERE), creationflags=subprocess.CREATE_NEW_PROCESS_GROUP)
+        else:
+            _proc = subprocess.Popen(args, cwd=str(HERE), start_new_session=True)
         _mode, _started = mode, time.time()
         return f"Ishga tushdi ({mode}), pid {_proc.pid}"
 
@@ -101,12 +104,27 @@ def stop() -> str:
     with _lock:
         if not _proc or _proc.poll() is not None:
             return "Ishlayotgan skript yo'q"
-        _proc.terminate()
-        try:
-            _proc.wait(5)
-        except subprocess.TimeoutExpired:
-            _proc.kill()
+        _kill_tree(_proc)
         return "To'xtatildi"
+
+
+def _kill_tree(p: subprocess.Popen) -> None:
+    """Bosh jarayon va uning har bir akkaunt jarayonini (navbat.py --account N) to'xtatadi."""
+    if os.name == "nt":
+        subprocess.run(["taskkill", "/PID", str(p.pid), "/T", "/F"], capture_output=True)
+        p.wait(5)
+        return
+    import signal
+    for sig in (signal.SIGTERM, signal.SIGKILL):
+        try:
+            os.killpg(p.pid, sig)
+        except ProcessLookupError:
+            return
+        try:
+            p.wait(5)
+        except subprocess.TimeoutExpired:
+            continue
+        time.sleep(1)  # bolalar ham chiqib ulgursin; tirik qolganini SIGKILL oladi
 
 
 def status() -> dict:
