@@ -35,7 +35,7 @@ ROOT = Path(__file__).resolve().parent.parent
 class Site:
     def __init__(self, users: dict[str, str], open_after: float, slots: int = 20,
                  expire_first_calendar: bool = False, taken_dialog_first: bool = False,
-                 down_seconds: float = 0):
+                 down_seconds: float = 0, error_after_login_once: bool = False):
         self.users = users
         self.open_at = time.time() + open_after   # shu vaqtdan keyin bo'sh joylar chiqadi
         self.slots = slots
@@ -51,6 +51,8 @@ class Site:
         # Shu vaqtgacha sayt hamma sahifaga 500 xato beradi (2026-10-18 17:30 dagi holat).
         self.down_until = time.time() + down_seconds
         self.down_hits = 0
+        # 1-login: cookie beriladi, lekin javob 500 (2026-10-20 18:30 dagi holat).
+        self.error_after_login_once = error_after_login_once
 
 
 PAGE = """<!doctype html><html><head><meta charset="utf-8"><title>mock</title></head>
@@ -146,6 +148,9 @@ def make_handler(site: Site):
             if self._down():
                 return
             user = self._user()
+            if u.path == "/auth/login" and user:
+                # Haqiqiy sayt: sessiya bor bo'lsa login sahifasi bosh sahifaga yo'naltiradi.
+                return self._redirect("/")
             if u.path == "/auth/login":
                 return self._send(PAGE.format(body='<form method="post" action="/auth/login">'
                     '<input name="login_id"><input name="password" type="password">'
@@ -185,6 +190,11 @@ def make_handler(site: Site):
                     sid = f"s{len(site.sessions)}{int(time.time()*1000)}"
                     site.sessions[sid] = lid
                     site.logins[lid] = site.logins.get(lid, 0) + 1
+                    if site.error_after_login_once:
+                        site.error_after_login_once = False
+                        return self._send('<html><head><title>エラーが発生しました。管理者にお問い合わせください</title>'
+                                          '</head><body>エラー</body></html>', 500,
+                                          {"Set-Cookie": f"sid={sid}; Path=/"})
                     return self._redirect("/", {"Set-Cookie": f"sid={sid}; Path=/"})
                 return self._send(PAGE.format(body="Login error"))
             user = self._user()
@@ -412,12 +422,31 @@ def scenario_site_down_then_recovers() -> list[str]:
     return errs + ([] if not errs else ["--- log ---\n" + out[-2500:]])
 
 
+def scenario_error_after_login_session_kept() -> list[str]:
+    """Login bosilgach 500, lekin cookie o'rnatilgan: bot sessiyani tanib, bron oladi."""
+    site = Site({"ali": "p1"}, open_after=20, error_after_login_once=True)
+    srv, base = start_site(site)
+    try:
+        code, out = run_bot(base, {"LOGIN_ID": "ali", "PASSWORD": "p1", "RETRY_SECONDS": "2", **PERSON1})
+    finally:
+        srv.shutdown()
+    errs = []
+    if "Sessiya allaqachon ochiq" not in out:
+        errs.append("bot ochiq sessiyani tanimadi")
+    if "Traceback" in out:
+        errs.append("bot qulab tushdi (Traceback)")
+    if len(site.bookings) != 1:
+        errs.append(f"bron bo'lmadi ({len(site.bookings)})")
+    return errs + ([] if not errs else ["--- log ---\n" + out[-2500:]])
+
+
 SCENARIOS = [
     ("Joy keyinroq ochiladi -> bron", scenario_single_slot_opens_later),
     ("2 akkaunt -> ikkalasi bron", scenario_two_accounts_both_book),
     ("Sessiya tushdi -> qayta login", scenario_session_expired_relogin),
     ("Joy boshqaga ketdi -> keyingisini oladi", scenario_slot_taken_retry),
     ("Sayt 500 xato beradi -> kutib, tiklangach bron", scenario_site_down_then_recovers),
+    ("Logindan keyin 500, sessiya bor -> bron", scenario_error_after_login_session_kept),
     ("Bo'sh majburiy maydon -> to'xtaydi", scenario_missing_field_stops),
     ("Joy ochilmadi -> muddatda to'xtaydi", scenario_no_slot_deadline),
 ]

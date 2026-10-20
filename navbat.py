@@ -349,6 +349,12 @@ def login(page: Page, c: dict, until: datetime | None = None) -> None:
         try:
             page.goto(LOGIN_URL, wait_until="domcontentloaded", timeout=20000)
             if not page.locator("input[name='login_id']").count():
+                # Sessiya allaqachon bor: sayt /auth/login dan bosh sahifaga yo'naltiradi.
+                # 2026-10-20: login bosilgach 500 chiqdi, lekin cookie o'rnatilgan edi -
+                # bot buni sezmay 40 daqiqa login sahifasini qayta ochib yurgan.
+                if "/auth/login" not in page.url and "エラー" not in page.title():
+                    log.info("Sessiya allaqachon ochiq (login sahifasi bosh sahifaga yo'naltirdi)")
+                    break
                 raise RuntimeError(f"login formasi yo'q, sahifa: {page.title()[:80]}")
             page.fill("input[name='login_id']", c["login_id"])
             page.fill("input[name='password']", c["password"])
